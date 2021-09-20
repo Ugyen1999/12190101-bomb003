@@ -1,1 +1,96 @@
-wwwwww
+
+(gdb) b phase_1 //set up break point at phase 1 to avoid from exploding bomb
+Breakpoint 1 at 0x400e8d
+(gdb) r   // Either use run or r to run the code.
+Starting program: /home/lab2-34/Desktop/Bomb_Lab/bomb003/bomb 
+Welcome to my fiendish little bomb. You have 6 phases with
+which to blow yourself up. Have a nice day!
+Have a nice day!.
+
+Breakpoint 1, 0x0000000000400e8d in phase_1 ()
+(gdb) disas
+Dump of assembler code for function phase_1:
+   0x0000000000400e8d <+0>:   sub    $0x8,%rsp     //building stack frame with 8 more bytes
+=> 0x0000000000400e91 <+4>:   mov    $0x4023b0,%esi //shows what is being moved from source to destination
+   0x0000000000400e96 <+9>:   callq  0x40132b <strings_not_equal> //Compares the input string with the actual answer
+   0x0000000000400e9b <+14>:  test   %eax,%eax
+   0x0000000000400e9d <+16>:  je     0x400ea4 <phase_1+23>
+   0x0000000000400e9f <+18>:  callq  0x40142a <explode_bomb>
+   0x0000000000400ea4 <+23>:  add    $0x8,%rsp
+   0x0000000000400ea8 <+27>:  retq   
+End of assembler dump.
+
+//Let's see what is being moved from address 0x4023bo. Since it has to be string we use x/s
+(gdb) x/s 0x4023b0 //Generate actual string
+
+0x4023b0:   "Border relations with Canada have never been better."
+
+//So this string is being moved into %esi, and will be passed into <strings_not_equal>. Let's examine what <strings_not_equal> does:
+
+
+Dump of assembler code for function phase_1:
+   0x0000000000400e8d <+0>:   sub    $0x8,%rsp
+   0x0000000000400e91 <+4>:   mov    $0x4023b0,%esi
+   0x0000000000400e96 <+9>:   callq  0x40132b <strings_not_equal>
+=> 0x0000000000400e9b <+14>:  test   %eax,%eax                   
+   0x0000000000400e9d <+16>:  je     0x400ea4 <phase_1+23>
+   0x0000000000400e9f <+18>:  callq  0x40142a <explode_bomb>
+   0x0000000000400ea4 <+23>:  add    $0x8,%rsp
+   0x0000000000400ea8 <+27>:  retq   
+End of assembler dump.
+
+(gdb) i r // Instruction register 
+rax            0x1                 1   //Will explode bomb as 1&1 will not give back zero
+rbx            0x4021e0            4202976
+rcx            0x11                17
+rdx            0x1                 1
+rsi            0x4023b0            4203440
+rdi            0x4023e4            4203492
+rbp            0x0                 0x0
+
+
+//Lets try using the string we found in the disassembler code and see the value of %eax for it:
+
+
+(gdb) b phase_1
+Breakpoint 1 at 0x400e8d
+(gdb) r
+Starting program: /home/lab2-34/Desktop/Bomb_Lab/bomb003/bomb 
+Welcome to my fiendish little bomb. You have 6 phases with
+which to blow yourself up. Have a nice day!
+Border relations with Canada have never been better.
+
+Breakpoint 1, 0x0000000000400e8d in phase_1 ()
+(gdb) disas
+Dump of assembler code for function phase_1:
+=> 0x0000000000400e8d <+0>:   sub    $0x8,%rsp
+   0x0000000000400e91 <+4>:   mov    $0x4023b0,%esi
+   0x0000000000400e96 <+9>:   callq  0x40132b <strings_not_equal>
+   0x0000000000400e9b <+14>:  test   %eax,%eax
+   0x0000000000400e9d <+16>:  je     0x400ea4 <phase_1+23>
+   0x0000000000400e9f <+18>:  callq  0x40142a <explode_bomb>
+   0x0000000000400ea4 <+23>:  add    $0x8,%rsp
+   0x0000000000400ea8 <+27>:  retq   
+End of assembler dump.
+(gdb) ni 3
+0x0000000000400e9b in phase_1 ()
+(gdb) disas
+Dump of assembler code for function phase_1:
+   0x0000000000400e8d <+0>:   sub    $0x8,%rsp
+   0x0000000000400e91 <+4>:   mov    $0x4023b0,%esi
+   0x0000000000400e96 <+9>:   callq  0x40132b <strings_not_equal>
+=> 0x0000000000400e9b <+14>:  test   %eax,%eax
+   0x0000000000400e9d <+16>:  je     0x400ea4 <phase_1+23>
+   0x0000000000400e9f <+18>:  callq  0x40142a <explode_bomb>
+   0x0000000000400ea4 <+23>:  add    $0x8,%rsp
+   0x0000000000400ea8 <+27>:  retq   
+End of assembler dump.
+(gdb) i r
+rax            0x0                 0     //%rax is equal to 0 which means it will jump pass the explode_bomb.
+rbx            0x4021e0            4202976
+rcx            0x34                52
+rdx            0x0                 0
+rsi            0x4023b0            4203440
+rdi            0x4023e4            4203492
+rbp            0x0                 0x0
+// So, the solution is "Border relations with Canada have never been better."
